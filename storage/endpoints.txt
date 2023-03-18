@@ -1,0 +1,2 @@
+https://query.wikidata.org/sparql
+https://dbpedia.org/sparql

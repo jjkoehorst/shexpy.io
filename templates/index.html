@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>My Flask App</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/styles.css') }}">
+    {#    YASHE #}
+    <link rel="stylesheet" href="{{ url_for('static', filename='yashe/yashe.min.css') }}">
+    <script src="{{ url_for('static', filename='yashe/yashe.bundled.min.js') }}"></script>
+    {#    YASGUI #}
+    <link rel="stylesheet" href="{{ url_for('static', filename='yasgui/yasgui.min.css') }}">
+    <script src="{{ url_for('static', filename='yasgui/yasgui.bundled.min.js') }}"></script>
+
+</head>
+<body>
+
+<h1>Welcome to my ShEx App!</h1>
+
+<div class="container" style="border:5px solid green;">
+    <div class="row" style="border:7px solid blue;">
+        <div class="column">
+            <form method="POST" action="/">
+                <label for="shex">ShEx Schema:</label><br>
+                <input type="text" name="endpoint" placeholder="SPARQL endpoint" value="Your endpoint here" style="width: 50%">
+                <select id="endpoint_menu" name="endpoint_menu" method="GET" action="/">
+                        <option value="IGNORE ENDPOINT">--- OPTIONAL SELECT ENDPOINT---</option>
+                    {% for endpoint in endpoint_menu %}
+                        <option value="{{ endpoint }}">{{ endpoint }}</option>
+                    {% endfor %}
+                </select><br>
+                <textarea id="shex" name="shex" style="width: 90%">{{ text_shex }}</textarea><br>
+                <textarea id="sparql" name="sparql" style="width: 90%" rows="3"> {{ text_sparql }}</textarea><br>
+                <button type="submit" name="submit_type" value="validate">Submit</button>
+                <button type="submit" name="submit_type" value="shex2dot">Visualize</button>
+                <br>
+            </form>
+        </div>
+        <div class="column">
+            <h1>My List</h1>
+            <ul>
+                {% if text_output_pass %}
+                    <p style="color:green;">THESE ARE WELL!!!</p>
+                    {% for item in text_output_pass %}
+                        {{ item }}
+                    {% endfor %}
+                {% endif %}
+                {% if text_output_fail %}
+                    <p style="color:red;">FAILURES DETECTED!!!!</p>
+                    {% for item in text_output_fail %}
+                        {{ item }}
+                    {% endfor %}
+                {% endif %}
+                {% if text_output_error %}
+                    <p style="color:purple;">SOMETHING WENT WRONG!!!</p>
+                    {% for item in text_output_error %}
+                        {{ item }}
+                    {% endfor %}
+                {% endif %}
+            {% if shex_image %}
+                <img src="data:image/png;base64,{{ shex_image }}" alt="Image 1" width="100%">
+            {% endif %}
+            </ul>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    var yashe = YASHE.fromTextArea(document.getElementById('shex'), {
+        showDownloadButton: false,
+        showDeleteButton: false,
+    });
+    shexForm.init(yashe);
+
+</script>
+
+<script>
+    const yasgui = new Yasgui(document.getElementById("sparql"));
+
+</script>
+
+</body>
+</html>
