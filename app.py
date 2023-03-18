@@ -4,6 +4,7 @@ import re
 import uuid
 from io import BytesIO
 
+from bs4 import BeautifulSoup
 from flask import Flask, request, render_template, send_file
 from markupsafe import Markup
 from pyshex import ShExEvaluator
@@ -12,7 +13,7 @@ from sparqlslurper import SlurpyGraphWithAgent
 import logging
 import validators
 
-import shex2dot
+import playground.shexviz_test
 
 # Create a Flask application
 app = Flask(__name__)
@@ -78,14 +79,11 @@ def home():
         endpoint_menu = request.form['endpoint_menu']
 
         if request.form['submit_type'] == "shex2dot":
-            dotschema = shex2dot.shex2dot(request.form['shex'])
-            print(dotschema)
+            # dotschema = shex2dot.shex2dot(request.form['shex'])
+            # print(dotschema)
             uuid_path = "./storage/generated/"+str(uuid.uuid4())
-            shex2dot.save_graphviz(dotschema, uuid_path)
-            with open(uuid_path + ".png", 'rb') as f:
-                # Read the image data into a BytesIO object
-                img_bytes = BytesIO(f.read())
-            img_b64 = base64.b64encode(img_bytes.read()).decode('utf-8')
+            svg_data = playground.shexviz_test.main(shex=request.form['shex'], path=uuid_path)
+
             # TODO REMOVE FILE
             return render_template('index.html',
                                    text_output_fail=[],
@@ -94,7 +92,7 @@ def home():
                                    text_shex=text_shex,
                                    text_sparql=text_sparql,
                                    endpoint_menu=endpoints,
-                                   shex_image=img_b64
+                                   shex_image=svg_data
                                    )
 
         if request.form['submit_type'] == "validate":

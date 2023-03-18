@@ -55,10 +55,11 @@
                         {{ item }}
                     {% endfor %}
                 {% endif %}
-            {% if shex_image %}
-                <img src="data:image/png;base64,{{ shex_image }}" alt="Image 1" width="100%">
-            {% endif %}
             </ul>
+            {% if shex_image %}
+                <object type="image/svg+xml" data="data:image/svg+xml;base64,{{ shex_image }}">
+            {% endif %}
+
         </div>
 
     </div>

@@ -1,8 +1,8 @@
+import base64
 import json
 
 from graphviz import Digraph
 from pyshex.utils.schema_loader import SchemaLoader
-
 
 # Define the ShEx code as a string
 shex_code = '''
@@ -47,98 +47,146 @@ start = @<human>
 }
 '''
 
+shex_code = '''
+PREFIX : <http://hl7.org/fhir/>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+PREFIX entity: <http://www.wikidata.org/entity/>
+
+start = @<ObservationShape>
+
+<ObservationShape> {               # An Observation has:
+  :status ["preliminary" "final"]; #   status in this value set
+  :subject @<PatientShape>         #   a subject matching <PatientShape>.
+}
+
+<PatientShape> {                   # A Patient has:
+ :name xsd:string*;                #   one or more names
+ :birthdate xsd:date?              #   and an optional birthdate.
+}
+'''
+
+# Placeholder for URL prefixes
 prefixmap = dict()
-for line in shex_code.splitlines():
-    if line.startswith("PREFIX") or line.startswith("prefix"):
-        line = line.replace("PREFIX", "").replace("prefix", "")
-        prefix, uri = line.split(": ")
-        prefix = prefix.strip()
-        uri = uri.strip()
-        prefixmap[uri.replace("<", "").replace(">", "")] = prefix
-
-# Create a schema loader
-loader = SchemaLoader()
-# Load schema as dictionary from json
-schema = json.loads(loader.loads(shex_code)._as_json)
-# Process shape
-print(schema)
 
 
+# helper function to replace URL prefixes with their abbreviations
 def url_fix(url):
     for key in prefixmap:
         if url.startswith(key):
+            # replace the URL with its corresponding prefix
             return url.replace(key, prefixmap[key] + ";")
+    return url
 
+# main function to generate the UML diagram
+def main(shex=shex_code, path="./uml_diagram"):
+    for line in shex.splitlines():
+        if line.startswith("PREFIX") or line.startswith("prefix"):
+            line = line.replace("PREFIX", "").replace("prefix", "")
+            prefix, uri = line.split(": ")
+            prefix = prefix.strip()
+            uri = uri.strip()
+            prefixmap[uri.replace("<", "").replace(">", "")] = prefix
 
-# Create a new Graphviz object
-dot = Digraph()
-# Set the font for nodes and edges
-dot.attr('node', fontname='Courier New')
-dot.attr('edge', fontname='Courier New')
-# Set the default node and edge attributes
-dot.attr('node', shape='record')
-dot.attr('edge', arrowtail='empty', dir='back')
+    # Create a schema loader
+    loader = SchemaLoader()
+    # Load schema as dictionary from json
+    schema = json.loads(loader.loads(shex)._as_json)
+    # Process shape
+    print(schema)
 
-# Create a new node dict
-node_dict = {}
-edge_dict = {}
-# Iterate over each shape
-for shape in schema["shapes"]:
-    identifier = shape["id"]
-    node_dict[identifier] = {}
+    # Create a new Graphviz object
+    dot = Digraph()
+    # Set the font for nodes and edges
+    dot.attr('node', fontname='Courier New')
+    dot.attr('edge', fontname='Courier New')
+    # Set the default node and edge attributes
+    dot.attr('node', shape='record')
+    dot.attr('edge', arrowtail='empty', dir='back')
 
-    # For valueExpressions
-    if "valueExpr" in shape["expression"]:
-        if shape["expression"]["valueExpr"]["type"] == "NodeConstraint":
-            predicate = url_fix(shape["expression"]["predicate"])
-            values = set()
-            for value in shape["expression"]["valueExpr"]["values"]:
-                value = url_fix(value)
-            values.add(value)
-            node_dict[identifier][predicate] = "" + "|".join(values) + ""
-        else:
-            print("Something new!")
-    # For general expressions
-    if "expressions" in shape["expression"]:
-        for expression in shape["expression"]["expressions"]:
-            if expression["type"] != "TripleConstraint":
-                print("Not a triple constraint?")
+    # Create a new node dict
+    node_dict = {}
+    edge_dict = {}
+    # Iterate over each shape
+    for shape in schema["shapes"]:
+        identifier = shape["id"]
+        node_dict[identifier] = {}
+
+        # For valueExpressions
+        if "valueExpr" in shape["expression"]:
+            if shape["expression"]["valueExpr"]["type"] == "NodeConstraint":
+                predicate = url_fix(shape["expression"]["predicate"])
+                values = set()
+                for value in shape["expression"]["valueExpr"]["values"]:
+                    value = url_fix(value)
+                values.add(value)
+                node_dict[identifier][predicate] = "" + "|".join(values) + ""
             else:
-                predicate = url_fix(expression["predicate"])
-                if "valueExpr" in expression:
-                    print(identifier, predicate, expression['valueExpr'])
-                    # Draw a connection!
-                    if type(expression['valueExpr']) == str:
-                        left = identifier
-                        right = expression['valueExpr']
-                        print("left", left)
-                        print("right", right)
-                        if left + "###" + right not in edge_dict:
-                            edge_dict[left + "###" + right] = []
-                        edge_dict[left + "###" + right].append(predicate)
-
-                elif "min" in expression:
-                    node_dict[identifier][predicate] = str(expression["min"]) + ":" + str(expression["max"])
+                print("Something new!")
+        # For general expressions
+        if "expressions" in shape["expression"]:
+            for expression in shape["expression"]["expressions"]:
+                if expression["type"] != "TripleConstraint":
+                    print("Not a triple constraint?")
                 else:
-                    values = set()
-                    for value in expression["valueExpr"]["values"]:
-                        value = url_fix(value)
-                    values.add(value)
-                    node_dict[identifier][predicate] = "" + "|".join(values) + ""
+                    predicate = url_fix(expression["predicate"])
+                    if "valueExpr" in expression:
+                        # print(identifier, predicate, expression['valueExpr'])
+                        # Draw a connection!
+                        if type(expression['valueExpr']) == str:
+                            left = identifier
+                            right = expression['valueExpr']
+                            print("left", left)
+                            print("right", right)
+                            if left + "###" + right not in edge_dict:
+                                edge_dict[left + "###" + right] = []
+                            edge_dict[left + "###" + right].append(predicate)
+                        elif type(expression['valueExpr']) == dict:
+                            if 'datatype' in expression['valueExpr']:
+                                node_dict[identifier][predicate] = url_fix(expression['valueExpr']['datatype'])
+                            elif 'values' in expression['valueExpr']:
+                                values = set()
+                                for value in expression["valueExpr"]["values"]:
+                                    # Not sure if we need to fix the url
+                                    value = url_fix(value['value'])
+                                    values.add(value.strip())
+                                node_dict[identifier][predicate] = "[" + "\|".join(values) + "]"
 
-# Create the node
-for node in node_dict:
-    content = "{" + node + '|'
-    for predicate in node_dict[node]:
-        content += "+" + predicate + " : " + node_dict[node][predicate] + "\\l"
-    content += '}'
-    dot.node(node, content)
-    print(">", node, content)
+                    elif "min" in expression:
+                        node_dict[identifier][predicate] = str(expression["min"]) + ":" + str(expression["max"])
+                    else:
+                        values = set()
+                        for value in expression["valueExpr"]["values"]:
+                            value = url_fix(value)
+                        values.add(value)
+                        node_dict[identifier][predicate] = "" + "|".join(values) + ""
 
-for edge in edge_dict:
-    for label in edge_dict[edge]:
-        dot.edge(left, right, label)
+    # Create the node
+    for node in node_dict:
+        content = "{" + node + '|'
+        for predicate in node_dict[node]:
+            content += "+" + predicate + " : " + node_dict[node][predicate] + "\\l"
+        content += '}'
+        dot.node(node, content)
+        print(">", node, content)
+
+    for edge in edge_dict:
+        for label in edge_dict[edge]:
+            left, right = edge.split("###")
+            print(left, right, label)
+            dot.edge(left, right, label)
+
+    # Render the diagram to a file
+    dot.attr(concentrate="true")
+    if __name__ == '__main__':
+        dot.render(path, format='svg')
+    else:
+        # Content xml cleanup only obtain the <svg></svg> part
+        content = '\n'.join(dot.pipe(format='svg').decode('utf-8').split("\n")[6:])
+        # Encode the SVG string using Base64
+        encoded_svg = base64.b64encode(content.encode('utf-8')).decode('ascii')
+        # Pass the encoded SVG string to the HTML template
+        return encoded_svg
 
 
-# Render the diagram to a file
-dot.render('uml_diagram', format='png')
+if __name__ == '__main__':
+    main()
