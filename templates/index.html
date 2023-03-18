@@ -20,9 +20,10 @@
         <div class="column">
             <form method="POST" action="/">
                 <label for="shex">ShEx Schema:</label><br>
-                <input type="text" name="endpoint" placeholder="SPARQL endpoint" value="Your endpoint here" style="width: 50%">
+                <input type="text" name="endpoint" placeholder="SPARQL endpoint" value="Your endpoint here"
+                       style="width: 50%">
                 <select id="endpoint_menu" name="endpoint_menu" method="GET" action="/">
-                        <option value="IGNORE ENDPOINT">--- OPTIONAL SELECT ENDPOINT---</option>
+                    <option value="IGNORE ENDPOINT">--- OPTIONAL SELECT ENDPOINT---</option>
                     {% for endpoint in endpoint_menu %}
                         <option value="{{ endpoint }}">{{ endpoint }}</option>
                     {% endfor %}
@@ -35,33 +36,37 @@
             </form>
         </div>
         <div class="column">
-            <h1>My List</h1>
-            <ul>
-                {% if text_output_pass %}
-                    <p style="color:green;">THESE ARE WELL!!!</p>
+
+            {% if shex_image %}
+                <h1>ShEx visualization</h1>
+                <object type="image/svg+xml" data="data:image/svg+xml;base64,{{ shex_image }}"></object>
+            {% else %}
+                <h1>Validation content</h1>
+            {% endif %}
+
+            {% if text_output_pass %}
+                <p style="color:green;">THESE ARE WELL!!!</p>
+                <ul class="checkmark">
                     {% for item in text_output_pass %}
                         {{ item }}
                     {% endfor %}
-                {% endif %}
-                {% if text_output_fail %}
-                    <p style="color:red;">FAILURES DETECTED!!!!</p>
+                </ul>
+            {% endif %}
+            {% if text_output_fail %}
+                <p style="color:red;">FAILURES DETECTED!!!!</p>
+                <ul class="crossmark">
                     {% for item in text_output_fail %}
                         {{ item }}
                     {% endfor %}
-                {% endif %}
-                {% if text_output_error %}
-                    <p style="color:purple;">SOMETHING WENT WRONG!!!</p>
-                    {% for item in text_output_error %}
-                        {{ item }}
-                    {% endfor %}
-                {% endif %}
-            </ul>
-            {% if shex_image %}
-                <object type="image/svg+xml" data="data:image/svg+xml;base64,{{ shex_image }}">
+                </ul>
             {% endif %}
-
+            {% if text_output_error %}
+                <p style="color:purple;">SOMETHING WENT WRONG!!!</p>
+                {% for item in text_output_error %}
+                    {{ item }}
+                {% endfor %}
+            {% endif %}
         </div>
-
     </div>
 </div>
 

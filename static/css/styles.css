@@ -9,15 +9,39 @@
 }
 
 .column {
-  float: left;
-  width: 50%;
-  padding: 10px;
-  box-sizing: border-box;
+    float: left;
+    width: 50%;
+    padding: 10px;
+    box-sizing: border-box;
 }
 
 /* Clear floats after the columns */
 .row:after {
-  content: "";
-  display: table;
-  clear: both;
+    content: "";
+    display: table;
+    clear: both;
+}
+
+/* Define the checkmark symbol */
+ul.checkmark li:before {
+    content: '✓';
+    margin-right: 10px;
+}
+
+/* Remove the bullet point */
+ul.checkmark {
+    list-style: none;
+    padding-left: 0;
+}
+
+/* Define the checkmark symbol */
+ul.crossmark li:before {
+    content: '✘';
+    margin-right: 10px;
+}
+
+/* Remove the bullet point */
+ul.crossmark {
+    list-style: none;
+    padding-left: 0;
 }

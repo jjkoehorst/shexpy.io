@@ -47,7 +47,7 @@ start = @<human>
 }
 '''
 
-shex_code = '''
+shex_code_old = '''
 PREFIX : <http://hl7.org/fhir/>
 PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
 PREFIX entity: <http://www.wikidata.org/entity/>
@@ -74,8 +74,9 @@ def url_fix(url):
     for key in prefixmap:
         if url.startswith(key):
             # replace the URL with its corresponding prefix
-            return url.replace(key, prefixmap[key] + ";")
+            return url.replace(key, prefixmap[key] + "\:")
     return url
+
 
 # main function to generate the UML diagram
 def main(shex=shex_code, path="./uml_diagram"):
@@ -135,8 +136,8 @@ def main(shex=shex_code, path="./uml_diagram"):
                         if type(expression['valueExpr']) == str:
                             left = identifier
                             right = expression['valueExpr']
-                            print("left", left)
-                            print("right", right)
+                            # print("left", left)
+                            # print("right", right)
                             if left + "###" + right not in edge_dict:
                                 edge_dict[left + "###" + right] = []
                             edge_dict[left + "###" + right].append(predicate)
@@ -147,9 +148,22 @@ def main(shex=shex_code, path="./uml_diagram"):
                                 values = set()
                                 for value in expression["valueExpr"]["values"]:
                                     # Not sure if we need to fix the url
-                                    value = url_fix(value['value'])
+                                    if type(value) == dict:
+                                        value = url_fix(value['value'])
+                                    elif type(value) == str:
+                                        value = url_fix(value)
+                                    else:
+                                        print("Something else?")
                                     values.add(value.strip())
-                                node_dict[identifier][predicate] = "[" + "\|".join(values) + "]"
+                                values = list(values)
+                                if len(values) > 5:
+                                    new_values = []
+                                    for index, value in enumerate(values):
+                                        if index % 5 == 0:
+                                            new_values.append("\\n")
+                                        new_values.append(value)
+                                    values = new_values
+                                node_dict[identifier][predicate] = "[" + "\|".join(values).replace("\\|\\n","\\n") + "]"
 
                     elif "min" in expression:
                         node_dict[identifier][predicate] = str(expression["min"]) + ":" + str(expression["max"])
@@ -167,12 +181,12 @@ def main(shex=shex_code, path="./uml_diagram"):
             content += "+" + predicate + " : " + node_dict[node][predicate] + "\\l"
         content += '}'
         dot.node(node, content)
-        print(">", node, content)
+        # print(">", node, content)
 
     for edge in edge_dict:
         for label in edge_dict[edge]:
             left, right = edge.split("###")
-            print(left, right, label)
+            # print(left, right, label)
             dot.edge(left, right, label)
 
     # Render the diagram to a file
