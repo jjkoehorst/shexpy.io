@@ -28,19 +28,24 @@
                         <option value="{{ endpoint }}">{{ endpoint }}</option>
                     {% endfor %}
                 </select><br>
+                <select id="shex_menu" name="shex_menu" method="GET" action="/">
+                    <option value="No ShEx example selected">--- ShEx Examples---</option>
+                    {% for shex in shex_menu %}
+                        <option value="{{ shex_menu[shex] }}">{{ shex }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit" name="submit_type" value="example">Get example</button><br>Examples might not show due to caching issues...
+
                 <textarea id="shex" name="shex" style="width: 90%">{{ text_shex }}</textarea><br>
                 <textarea id="sparql" name="sparql" style="width: 90%" rows="3"> {{ text_sparql }}</textarea><br>
-                <button type="submit" name="submit_type" value="validate">Submit</button>
+                <button type="submit" name="submit_type" value="validate">Validate</button>
                 <button type="submit" name="submit_type" value="shex2dot">Visualize</button>
                 <br>
             </form>
         </div>
         <div class="column">
 
-            {% if shex_image %}
-                <h1>ShEx visualization</h1>
-                <object type="image/svg+xml" data="data:image/svg+xml;base64,{{ shex_image }}"></object>
-            {% else %}
+            {% if not shex_image %}
                 <h1>Validation content</h1>
             {% endif %}
 
@@ -68,6 +73,11 @@
             {% endif %}
         </div>
     </div>
+        {% if shex_image %}
+            <h1>ShEx visualization</h1>
+            <object type="image/svg+xml" data="data:image/svg+xml;base64,{{ shex_image }}" width="100%"></object>
+        {% endif %}
+
 </div>
 
 <script>

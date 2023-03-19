@@ -1,11 +1,12 @@
 # Import the necessary libraries
 import base64
+import os
 import re
 import uuid
 from io import BytesIO
 
 from bs4 import BeautifulSoup
-from flask import Flask, request, render_template, send_file
+from flask import Flask, request, render_template, send_file, redirect
 from markupsafe import Markup
 from pyshex import ShExEvaluator
 from pyshex.utils.sparql_query import SPARQLQuery
@@ -66,7 +67,6 @@ def validate(endpoint, shex, sparql):
 # Define a route for the Flask application
 @app.route('/', methods=['GET', 'POST'])
 def home():
-    print("REQUEST???", request.method)
     # If the request method is POST
     if request.method == 'POST':
         # Get the ShEx, SPARQL, and endpoint values from the form
@@ -74,6 +74,11 @@ def home():
         text_sparql = request.form['sparql']
         # Obtain the endpoints list
         endpoints = sorted(list(set([endpoint.strip() for endpoint in open("./storage/endpoints.txt").readlines()])))
+        shex_examples = {}
+        for filename in os.listdir("./static/shapes/"):
+            content = open("./static/shapes/" + filename).read()
+            shex_examples[filename] = content
+        print(">>>", shex_examples)
         # Obtain user input and drop downmenu from endpoints
         endpoint = request.form['endpoint']
         endpoint_menu = request.form['endpoint_menu']
@@ -81,7 +86,7 @@ def home():
         if request.form['submit_type'] == "shex2dot":
             # dotschema = shex2dot.shex2dot(request.form['shex'])
             # print(dotschema)
-            uuid_path = "./storage/generated/"+str(uuid.uuid4())
+            uuid_path = "./storage/generated/" + str(uuid.uuid4())
             svg_data = playground.shexviz_test.main(shex=request.form['shex'], path=uuid_path)
 
             # TODO REMOVE FILE
@@ -92,6 +97,7 @@ def home():
                                    text_shex=text_shex,
                                    text_sparql=text_sparql,
                                    endpoint_menu=endpoints,
+                                   shex_menu=shex_examples,
                                    shex_image=svg_data
                                    )
 
@@ -116,13 +122,15 @@ def home():
                                        endpoint=endpoint,
                                        text_shex=text_shex,
                                        text_sparql=text_sparql,
-                                       endpoint_menu=endpoints
+                                       endpoint_menu=endpoints,
+                                       shex_menu=shex_examples,
                                        )
 
             if len(text_output["ERROR"]) == 0:
                 # ENDPOINT SHOULD BE OK... ADD USER ENDPOINT TO LIST
                 with open("./storage/endpoints.txt", "a") as output:
-                    output.write("\n" + endpoint + "\n")
+                    if validators.url(endpoint):
+                        output.write("\n" + endpoint + "\n")
 
             # Return results
             return render_template('index.html',
@@ -132,15 +140,37 @@ def home():
                                    endpoint=endpoint,
                                    text_shex=text_shex,
                                    text_sparql=text_sparql,
-                                   endpoint_menu=endpoints
+                                   endpoint_menu=endpoints,
+                                   shex_menu=shex_examples,
                                    )
+        elif request.form['submit_type'] == "example":
+            shex_menu = request.form['shex_menu']
+            print("shex_menu", len(shex_menu))
+            return render_template('index.html',
+                                   # text_output_fail=text_output["FAIL"],
+                                   # text_output_pass=text_output["PASS"],
+                                   # text_output_error=text_output["ERROR"],
+                                   endpoint=endpoint,
+                                   text_shex=shex_menu,
+                                   text_sparql=text_sparql,
+                                   endpoint_menu=endpoints,
+                                   shex_menu=shex_examples,
+                                   )
+        else:
+            print("New type detected!")
 
     # If the request method is not POST
     else:
+        print("ELSE!!!!")
         # Set the default endpoint, ShEx shape, and SPARQL query
         endpoint = "https://query.wikidata.org/sparql"
         endpoints = sorted(list(set([endpoint.strip() for endpoint in open("./storage/endpoints.txt").readlines()])))
-        text_shex = open("./static/shapes/shape1.txt").read()
+        shex_examples = {}
+        for filename in sorted(os.listdir("./static/shapes/")):
+            content = open("./static/shapes/" + filename).read()
+            shex_examples[filename] = content
+
+        text_shex = open("./static/shapes/" + os.listdir("./static/shapes")[0]).read()
         text_sparql = open("./static/sparql/query1.sparql").read()
 
         # Render the template with the output, endpoint, ShEx shape, and SPARQL query
@@ -150,7 +180,8 @@ def home():
                                endpoint=endpoint,
                                text_shex=text_shex,
                                text_sparql=text_sparql,
-                               endpoint_menu=endpoints
+                               endpoint_menu=endpoints,
+                               shex_menu=shex_examples,
                                )
 
 
