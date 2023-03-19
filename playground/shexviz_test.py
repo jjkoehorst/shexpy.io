@@ -171,11 +171,12 @@ def main(shex=shex_code, path="./uml_diagram"):
     for edge in edge_dict:
         for label in edge_dict[edge]:
             left, right = edge.split("###")
-            print("EDGE:", left, right)
-            dot.edge(escape_dot_string(left), escape_dot_string(right))
+            # print("EDGE:", left, right)
+            dot.edge(escape_dot_string(left), escape_dot_string(right), label)
 
     # Render the diagram to a file
     dot.attr(concentrate="true")
+
     if __name__ == '__main__':
         dot.render(path, format='svg')
     else:
