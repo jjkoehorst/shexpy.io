@@ -3,10 +3,13 @@ import json
 import os
 import shutil
 import logging
+from types import NoneType
+
 import ShExJSG
 import validators
 from ShExJSG.ShExJ import TripleConstraint, IRIREF
 from graphviz import Digraph
+from pyjsg.jsglib import JSGArray
 from pyshex.utils.schema_loader import SchemaLoader
 
 # Set up logging for the application
@@ -122,6 +125,10 @@ def triple_constraint(expression, identifier):
                 node_dict[identifier][predicate] = node_dict[identifier][predicate].replace("\n|","\n")
             elif type(expression.valueExpr.datatype) == IRIREF:
                 node_dict[identifier][predicate] = url_fix(str(expression.valueExpr.datatype)) + " (" + cardinality + ")"
+            elif expression.valueExpr.pattern is not None:
+                node_dict[identifier][predicate] = str(expression.valueExpr.pattern) + " (" + cardinality + ")"
+            else:
+                logging.error("NOT CAPTURED")
         elif type(expression.valueExpr) == IRIREF:
             left = identifier
             right = url_fix(expression['valueExpr'])
@@ -147,15 +154,18 @@ def triple_constraint(expression, identifier):
         elif type(expression.valueExpr) == ShExJSG.ShExJ.ShapeAnd:
             logging.error("TODO ShExJSG.ShExJ.ShapeAnd")
         elif type(expression.valueExpr) == ShExJSG.ShExJ.ShapeOr:
-            logging.error("TODO ShExJSG.ShExJ.ShapeAnd")
+            # logging.debug("TODO ShExJSG.ShExJ.ShapeOr")
+            values = get_values(expression.valueExpr.shapeExprs)
+            node_dict[identifier][predicate] = "[" + "|".join(values) + "] (OR)"
         elif type(expression.valueExpr) == ShExJSG.ShExJ.ShapeNot:
-            logging.error("TODO ShExJSG.ShExJ.ShapeAnd")
+            logging.error("TODO ShExJSG.ShExJ.ShapeNot")
         elif type(expression.valueExpr) == ShExJSG.ShExJ.ShapeDecl:
-            logging.error("TODO ShExJSG.ShExJ.ShapeAnd")
+            logging.error("TODO ShExJSG.ShExJ.ShapeDecl")
         elif type(expression.valueExpr) == ShExJSG.ShExJ.ShapeExternal:
-            logging.error("TODO ShExJSG.ShExJ.ShapeAnd")
-        elif type(expression.valueExpr) == None:
+            logging.error("TODO ShExJSG.ShExJ.ShapeExternal")
+        elif type(expression.valueExpr) == NoneType:
             logging.error("TODO None")
+            node_dict[identifier][predicate] = "(1)"
         else:
             logging.error("Type not captured: "+ str(type(expression.valueExpr)))
     else:
@@ -171,12 +181,16 @@ def one_of_constraint(expression, identifier):
     for element in expression.expressions:
         if element.type == 'EachOf':
             each_of_constraint(element, identifier)
+        else:
+            logging.error("Not caputered")
 
 
 def expressions(expressions, identifier):
     for expression in expressions:
         if expression["type"] == "TripleConstraint":
             triple_constraint(expression, identifier)
+        else:
+            logging.error("Not captured")
 
 
 def set_prefix_map(shex_code):
@@ -185,7 +199,7 @@ def set_prefix_map(shex_code):
             line = line.replace("BASE", "").replace("base", "")
             uri = line.strip()
             prefix_map[uri.replace("<", "").replace(">", "")] = "base"
-        if line.lower().startswith("prefix"):
+        elif line.lower().startswith("prefix"):
             line = line.replace("PREFIX", "").replace("prefix", "")
             prefix, uri = line.split(": ")
             prefix = prefix.strip()
@@ -221,7 +235,7 @@ def main(shex=shex_code, path="./uml_diagram"):
     # Load schema as dictionary from json
     schema = loader.loads(shex)
 
-    json_schema = json.loads(loader.loads(shex)._as_json)
+    # json_schema = json.loads(loader.loads(shex)._as_json)
     # Process shape
     # print(schema)
 
@@ -242,7 +256,7 @@ def main(shex=shex_code, path="./uml_diagram"):
 
         # For expressions
         # print(shape.expression)
-        if "expression" in shape and shape.expression != None:
+        if "expression" in shape and shape.expression is not None:
             if 'type' not in shape.expression:
                 logging.debug("No type defined")
             elif shape.expression.type == "TripleConstraint":
@@ -264,6 +278,12 @@ def main(shex=shex_code, path="./uml_diagram"):
             #         print("Something new!")
             else:
                 logging.debug("Some new expression type detected " + shape["expression"]["type"])
+        elif type(shape.values) == JSGArray:
+            values = get_values(shape.values)
+            for predicate in values:
+                node_dict[identifier][predicate] = " (1)"
+        else:
+            logging.error("No expression found")
             # For general expressions
             # elif "expressions" in shape["expression"]:
             #     for expression in shape["expression"]["expressions"]:
@@ -311,7 +331,7 @@ if __name__ == '__main__':
     shutil.rmtree("../storage/generated/")
     os.makedirs("../storage/generated/")
     for filename in sorted(os.listdir("../static/shapes/test/")):
-        # if filename != "E2.shex": continue
+        # if filename != "E39.shex": continue
         logging.info("Processing " + filename)
         shex_code = open("../static/shapes/test/" + filename).read()
         shutil.copy("../static/shapes/test/" + filename, "../storage/generated/" + filename)
