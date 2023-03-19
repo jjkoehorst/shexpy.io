@@ -2,12 +2,16 @@ import base64
 import json
 import os
 import shutil
-
+import logging
 import ShExJSG
 import validators
 from ShExJSG.ShExJ import TripleConstraint, IRIREF
 from graphviz import Digraph
 from pyshex.utils.schema_loader import SchemaLoader
+
+# Set up logging for the application
+# logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(format='%(asctime)s - %(levelname)s - %(module)s:%(lineno)d - %(message)s', level=logging.DEBUG)
 
 # Placeholder for URL prefixes
 prefix_map = dict()
@@ -16,27 +20,12 @@ shex_code: str = ""
 node_dict = {}
 edge_dict = {}
 
-
-def get_dict_size(d):
-    size = 0
-    if isinstance(d, dict):
-        for k, v in d.items():
-            size += get_dict_size(k) + get_dict_size(v)
-    elif isinstance(d, list):
-        size += len(d) * get_dict_size(d[0]) if d else 0
-    elif isinstance(d, str):
-        size += len(d.encode('utf-8'))
-    else:
-        size += d.__sizeof__()
-    return size
-
-
 # helper function to replace URL prefixes with their abbreviations
 def url_fix(url):
     if validators.url(str(url)):
         url = str(url)
     if type(url) != str and not validators.url(str(url)):
-        print("Not a url string: ", url)
+        # print("Not a url string: ", url)
         return url
     if not validators.url(url):
         return url
@@ -62,6 +51,7 @@ def escape_dot_string(s):
     s = s.replace('+', '\\+')
     s = s.replace('{', '\\{')
     s = s.replace('}', '\\}')
+    s = s.replace('|', '\\|')
     s = s.replace(':', ';')
     return s
 
@@ -93,8 +83,10 @@ def get_values(values_expression):
             value = url_fix(value)
         elif type(value) == IRIREF:
             value = url_fix(str(value))
+        elif type(value) == ShExJSG.ShExJ.ObjectLiteral:
+            value = value.value
         else:
-            print("Something else? ", type(value))
+            logging.debug("Something else? " + str(type(value)))
             value = ""
         values.add(value.strip())
     values = list(values)
@@ -102,7 +94,7 @@ def get_values(values_expression):
         new_values = []
         for index, value in enumerate(values):
             if index % 5 == 0:
-                new_values.append("\\n")
+                new_values.append("\n")
             new_values.append(value)
         values = new_values
     return values
@@ -126,8 +118,8 @@ def triple_constraint(expression, identifier):
             if expression.valueExpr.values is not None:
                 # print(">>>", expression.valueExpr.values)
                 values = get_values(expression.valueExpr.values)
-                node_dict[identifier][predicate] = "[" + "\|".join(values).replace("\\|\\n",
-                                                                                   "\\n") + "] (" + cardinality + ")"
+                node_dict[identifier][predicate] = "[" + "|".join(values) + "] (" + cardinality + ")"
+                node_dict[identifier][predicate] = node_dict[identifier][predicate].replace("\n|","\n")
             elif type(expression.valueExpr.datatype) == IRIREF:
                 node_dict[identifier][predicate] = url_fix(str(expression.valueExpr.datatype)) + " (" + cardinality + ")"
         elif type(expression.valueExpr) == IRIREF:
@@ -143,19 +135,31 @@ def triple_constraint(expression, identifier):
             valueExpr = expression['valueExpr']
             if 'datatype' in valueExpr:
                 node_dict[identifier][predicate] = url_fix(valueExpr['datatype']) + " (" + cardinality + ")"
+                node_dict[identifier][predicate] = node_dict[identifier][predicate].replace("\n|", "\n")
             elif 'values' in valueExpr:
                 values = get_values(valueExpr['values'])
-                node_dict[identifier][predicate] = "[" + "\|".join(values).replace("\\|\\n",
-                                                                                 "\\n") + "] (" + cardinality + ")"
+                node_dict[identifier][predicate] = "[" + "|".join(values) + "] (" + cardinality + ")"
             elif 'expression' in valueExpr:
                 if type(valueExpr.expression) == TripleConstraint:
                     triple_constraint(valueExpr.expression, identifier)
             else:
-                print("Need to capture something else...")
+                logging.error("Need to capture something else...")
+        elif type(expression.valueExpr) == ShExJSG.ShExJ.ShapeAnd:
+            logging.error("TODO ShExJSG.ShExJ.ShapeAnd")
+        elif type(expression.valueExpr) == ShExJSG.ShExJ.ShapeOr:
+            logging.error("TODO ShExJSG.ShExJ.ShapeAnd")
+        elif type(expression.valueExpr) == ShExJSG.ShExJ.ShapeNot:
+            logging.error("TODO ShExJSG.ShExJ.ShapeAnd")
+        elif type(expression.valueExpr) == ShExJSG.ShExJ.ShapeDecl:
+            logging.error("TODO ShExJSG.ShExJ.ShapeAnd")
+        elif type(expression.valueExpr) == ShExJSG.ShExJ.ShapeExternal:
+            logging.error("TODO ShExJSG.ShExJ.ShapeAnd")
+        elif type(expression.valueExpr) == None:
+            logging.error("TODO None")
         else:
-            print("Type not captured: ", type(expression['valueExpr']))
+            logging.error("Type not captured: "+ str(type(expression.valueExpr)))
     else:
-        print("Fix me...")
+        logging.error("Fix me...")
     # elif "min" in expression:
     #     node_dict[identifier][predicate] = str(expression["min"]) + ":" + str(expression["max"])
     # else:
@@ -163,7 +167,7 @@ def triple_constraint(expression, identifier):
 
 
 def one_of_constraint(expression, identifier):
-    print("one of constraints")
+    logging.debug("one of constraints")
     for element in expression.expressions:
         if element.type == 'EachOf':
             each_of_constraint(element, identifier)
@@ -192,11 +196,14 @@ def set_prefix_map(shex_code):
 def each_of_constraint(each_of, identifier):
     for expression in each_of.expressions:
         if 'type' not in expression:
-            print("NO TYPE")
+            if type(expression) == IRIREF:
+                logging.debug("Not sure what to do with IRIREF here")
+            else:
+                logging.debug("NO TYPE")
         elif expression.type == "TripleConstraint":
             triple_constraint(expression, identifier)
         else:
-            print("Nothing here yet")
+            logging.debug("Nothing here yet")
 
 
 def main(shex=shex_code, path="./uml_diagram"):
@@ -237,15 +244,13 @@ def main(shex=shex_code, path="./uml_diagram"):
         # print(shape.expression)
         if "expression" in shape and shape.expression != None:
             if 'type' not in shape.expression:
-                print("No type defined")
+                logging.debug("No type defined")
             elif shape.expression.type == "TripleConstraint":
-                print(get_dict_size(node_dict), get_dict_size(edge_dict))
                 triple_constraint(shape["expression"], identifier)
-                # print(get_dict_size(node_dict), get_dict_size(edge_dict))
             elif shape.expression.type == "EachOf":
                 each_of_constraint(shape.expression, identifier)
             elif shape.expression.type == "OneOf":
-                print("TODO process each of")
+                logging.debug("TODO process each of")
                 one_of_constraint(shape["expression"], identifier)
             # elif "valueExpr" in shape["expression"]:
             #     print("HERE!!!")
@@ -258,7 +263,7 @@ def main(shex=shex_code, path="./uml_diagram"):
             #     else:
             #         print("Something new!")
             else:
-                print("Some new expression type detected", shape["expression"]["type"])
+                logging.debug("Some new expression type detected " + shape["expression"]["type"])
             # For general expressions
             # elif "expressions" in shape["expression"]:
             #     for expression in shape["expression"]["expressions"]:
@@ -273,9 +278,11 @@ def main(shex=shex_code, path="./uml_diagram"):
     for node in node_dict:
         content = "{" + escape_dot_string(node) + '|'
         for predicate in node_dict[node]:
-            content += "+" + escape_dot_string(predicate) + " : " + escape_dot_string(
-                node_dict[node][predicate]) + "\\l"
+            content += "+" + escape_dot_string(predicate) + " : " + escape_dot_string(node_dict[node][predicate]) + "\\l"
         content += '}'
+        # Convert to raw string to get rid of crazy escapes
+        content = r"%s" % content
+        content = content.replace("\n","\\n")
         dot.node(escape_dot_string(node), content)
         # print(">", node, content)
 
@@ -304,8 +311,8 @@ if __name__ == '__main__':
     shutil.rmtree("../storage/generated/")
     os.makedirs("../storage/generated/")
     for filename in sorted(os.listdir("../static/shapes/test/")):
-        # if filename != "E4.shex": continue
-        print("Processing", filename)
+        # if filename != "E2.shex": continue
+        logging.info("Processing " + filename)
         shex_code = open("../static/shapes/test/" + filename).read()
         shutil.copy("../static/shapes/test/" + filename, "../storage/generated/" + filename)
         main(shex=shex_code, path="../storage/generated/" + filename.replace(".shex", ""))

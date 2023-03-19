@@ -73,8 +73,9 @@ def home():
         endpoints = sorted(list(set([endpoint.strip() for endpoint in open("./storage/endpoints.txt").readlines()])))
         shex_examples = {}
         for filename in os.listdir("./static/shapes/"):
-            content = open("./static/shapes/" + filename).read()
-            shex_examples[filename] = content
+            if filename.endswith(".shex"):
+                content = open("./static/shapes/" + filename).read()
+                shex_examples[filename] = content
         print(">>>", shex_examples)
         # Obtain user input and drop downmenu from endpoints
         endpoint = request.form['endpoint']
@@ -166,10 +167,11 @@ def home():
         endpoints = sorted(list(set([endpoint.strip() for endpoint in open("./storage/endpoints.txt").readlines()])))
         shex_examples = {}
         for filename in sorted(os.listdir("./static/shapes/")):
-            content = open("./static/shapes/" + filename).read()
-            shex_examples[filename] = content
+            if filename.endswith(".shex"):
+                content = open("./static/shapes/" + filename).read()
+                shex_examples[filename] = content
 
-        text_shex = open("./static/shapes/" + os.listdir("./static/shapes")[0]).read()
+        text_shex = shex_examples[list(shex_examples.keys())[0]]
         text_sparql = open("./static/sparql/query1.sparql").read()
 
         # Render the template with the output, endpoint, ShEx shape, and SPARQL query
