@@ -1,18 +1,15 @@
 # Import the necessary libraries
-import base64
+import logging
 import os
 import re
 import uuid
-from io import BytesIO
 
-from bs4 import BeautifulSoup
-from flask import Flask, request, render_template, send_file, redirect
+import validators
+from flask import Flask, request, render_template
 from markupsafe import Markup
 from pyshex import ShExEvaluator
 from pyshex.utils.sparql_query import SPARQLQuery
 from sparqlslurper import SlurpyGraphWithAgent
-import logging
-import validators
 
 import playground.shexviz_test
 
