@@ -5,12 +5,9 @@ import validators
 from graphviz import Digraph
 from pyshex.utils.schema_loader import SchemaLoader
 
-# Define the ShEx code as a string
-shex_code = open("../static/shapes/E1").read()
-
 # Placeholder for URL prefixes
 prefixmap = dict()
-
+shex_code = ""
 
 # helper function to replace URL prefixes with their abbreviations
 def url_fix(url):
@@ -47,6 +44,7 @@ def escape_dot_string(s):
 
 # main function to generate the UML diagram
 def main(shex=shex_code, path="./uml_diagram"):
+    print("SHEX_CODE:", shex_code)
     for line in shex.splitlines():
         if line.lower().startswith("base"):
             line = line.replace("BASE", "").replace("base", "")
@@ -189,4 +187,7 @@ def main(shex=shex_code, path="./uml_diagram"):
 
 
 if __name__ == '__main__':
+    # Define the ShEx code as a string
+    shex_code = open("../static/shapes/E1").read()
+
     main()
