@@ -1,5 +1,6 @@
 import base64
 import json
+import os
 
 import validators
 from graphviz import Digraph
@@ -8,6 +9,10 @@ from pyshex.utils.schema_loader import SchemaLoader
 # Placeholder for URL prefixes
 prefixmap = dict()
 shex_code = ""
+# Create a new node dict
+node_dict = {}
+edge_dict = {}
+
 
 # helper function to replace URL prefixes with their abbreviations
 def url_fix(url):
@@ -43,8 +48,23 @@ def escape_dot_string(s):
 
 
 # main function to generate the UML diagram
+def node_constraint(shape, identifier):
+    predicate = url_fix(shape["expression"]["predicate"])
+    values = set()
+    if "values" in shape["expression"]["valueExpr"]:
+        for value in shape["expression"]["valueExpr"]["values"]:
+            if 'value' in value:
+                value = url_fix(value['value'])
+            else:
+                value = url_fix(value)
+        values.add(value)
+        node_dict[identifier][predicate] = "" + "|".join(values) + ""
+    elif "pattern" in shape["expression"]["valueExpr"]:
+        node_dict[identifier][predicate] = shape["expression"]["valueExpr"]["pattern"]
+
+
 def main(shex=shex_code, path="./uml_diagram"):
-    print("SHEX_CODE:", shex_code)
+    # print("SHEX_CODE:", shex)
     for line in shex.splitlines():
         if line.lower().startswith("base"):
             line = line.replace("BASE", "").replace("base", "")
@@ -73,9 +93,6 @@ def main(shex=shex_code, path="./uml_diagram"):
     dot.attr('node', shape='record')
     dot.attr('edge', arrowtail='empty', dir='back')
 
-    # Create a new node dict
-    node_dict = {}
-    edge_dict = {}
     # Iterate over each shape
     for shape in schema["shapes"]:
         identifier = url_fix(shape["id"])
@@ -83,20 +100,15 @@ def main(shex=shex_code, path="./uml_diagram"):
 
         # For valueExpressions
         if "expression" in shape:
+            if shape["expression"]["type"] == "TripleConstraint":
+                pass
             if "valueExpr" in shape["expression"]:
+                # NodeConstraint
                 if shape["expression"]["valueExpr"]["type"] == "NodeConstraint":
-                    predicate = url_fix(shape["expression"]["predicate"])
-                    values = set()
-                    if "values" in shape["expression"]["valueExpr"]:
-                        for value in shape["expression"]["valueExpr"]["values"]:
-                            if 'value' in value:
-                                value = url_fix(value['value'])
-                            else:
-                                value = url_fix(value)
-                        values.add(value)
-                        node_dict[identifier][predicate] = "" + "|".join(values) + ""
-                    elif "pattern" in shape["expression"]["valueExpr"]:
-                        node_dict[identifier][predicate] = shape["expression"]["valueExpr"]["pattern"]
+                    node_constraint(shape, identifier)
+                # Shape object
+                elif shape["expression"]["valueExpr"]["type"] == "Shape":
+                    pass
                 else:
                     print("Something new!")
             # For general expressions
@@ -188,6 +200,7 @@ def main(shex=shex_code, path="./uml_diagram"):
 
 if __name__ == '__main__':
     # Define the ShEx code as a string
-    shex_code = open("../static/shapes/E1").read()
-
-    main()
+    for filename in os.listdir("../static/shapes/test/"):
+        print("Processing", filename)
+        shex_code = open("../static/shapes/test/" + filename).read()
+        main(shex=shex_code, path="../storage/generated/" + filename)

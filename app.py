@@ -111,10 +111,9 @@ def home():
                 except ValueError as e:
                     text_output = {"FAIL": [], "PASS": [], "ERROR": [e]}
             else:
-                print("No can do...")
+                # No endpoint selected
                 text_output = {"FAIL": [], "PASS": [], "ERROR": ["NO ENDPOINT SELECTED"]}
                 # Return results
-                print("ENDPOINTS: ", endpoints)
                 return render_template('index.html',
                                        text_output_fail=text_output["FAIL"],
                                        text_output_pass=text_output["PASS"],
