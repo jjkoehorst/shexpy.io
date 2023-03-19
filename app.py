@@ -106,7 +106,10 @@ def home():
             # If menu valid url
             elif validators.url(endpoint_menu):
                 # Validate the ShEx shape against the SPARQL query using the endpoint
-                text_output = validate(endpoint_menu, text_shex, text_sparql)
+                try:
+                    text_output = validate(endpoint_menu, text_shex, text_sparql)
+                except ValueError as e:
+                    text_output = {"FAIL": [], "PASS": [], "ERROR": [e]}
             else:
                 print("No can do...")
                 text_output = {"FAIL": [], "PASS": [], "ERROR": ["NO ENDPOINT SELECTED"]}
