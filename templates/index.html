@@ -1,20 +1,8 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>My Flask App</title>
-    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/styles.css') }}">
-    {#    YASHE #}
-    <link rel="stylesheet" href="{{ url_for('static', filename='yashe/yashe.min.css') }}">
-    <script src="{{ url_for('static', filename='yashe/yashe.bundled.min.js') }}"></script>
-    {#    YASGUI #}
-    <link rel="stylesheet" href="{{ url_for('static', filename='yasgui/yasgui.min.css') }}">
-    <script src="{{ url_for('static', filename='yasgui/yasgui.bundled.min.js') }}"></script>
+{% extends "base.html" %}
 
-</head>
-<body>
+{% block title %}SheX Visualizer{% endblock %}
 
-<h1>Welcome to my ShEx App!</h1>
-
+{% block content %}
 <div class="container" style="border:5px solid green;">
     <div class="row" style="border:7px solid blue;">
         <div class="column">
@@ -75,24 +63,11 @@
     </div>
         {% if shex_image %}
             <h1>ShEx visualization</h1>
-            <object type="image/svg+xml" data="data:image/svg+xml;base64,{{ shex_image }}" width="100%"></object>
+            <!-- <object id="my-svg" type="image/svg+xml" data="data:image/svg+xml;base64,{{ shex_image }}" ></object> -->
+            {{ shex_image | safe }}
         {% endif %}
 
 </div>
 
-<script>
-    var yashe = YASHE.fromTextArea(document.getElementById('shex'), {
-        showDownloadButton: false,
-        showDeleteButton: false,
-    });
-    shexForm.init(yashe);
+{% endblock %}
 
-</script>
-
-<script>
-    const yasgui = new Yasgui(document.getElementById("sparql"));
-
-</script>
-
-</body>
-</html>

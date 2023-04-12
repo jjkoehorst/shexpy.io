@@ -60,10 +60,19 @@ def validate(endpoint, shex, sparql):
     content = process_html(content)
     return content
 
+# Define a route for the Flask application
+@app.route('/about', methods=['GET', 'POST'])
+def about():
+    return render_template('about.html')
+
+# Define a route for the Flask application
+@app.route('/contact', methods=['GET', 'POST'])
+def contact():
+    return render_template('contact.html')
 
 # Define a route for the Flask application
 @app.route('/', methods=['GET', 'POST'])
-def home():
+def validate():
     # If the request method is POST
     if request.method == 'POST':
         # Get the ShEx, SPARQL, and endpoint values from the form
@@ -76,7 +85,7 @@ def home():
             if filename.endswith(".shex"):
                 content = open("./static/shapes/" + filename).read()
                 shex_examples[filename] = content
-        print(">>>", shex_examples)
+        # print(">>>", shex_examples)
         # Obtain user input and drop downmenu from endpoints
         endpoint = request.form['endpoint']
         endpoint_menu = request.form['endpoint_menu']

@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>{% block title %}{% endblock %}</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/styles.css') }}">
+    {#    YASHE #}
+    <link rel="stylesheet" href="{{ url_for('static', filename='yashe/yashe.min.css') }}">
+    <script src="{{ url_for('static', filename='yashe/yashe.bundled.min.js') }}"></script>
+    {#    YASGUI #}
+    <link rel="stylesheet" href="{{ url_for('static', filename='yasgui/yasgui.min.css') }}">
+    <script src="{{ url_for('static', filename='yasgui/yasgui.min.js') }}"></script>
+    {# SVG PAN ZOOM ? #}
+    {# <script src="https://cdn.jsdelivr.net/npm/svgpanzoom@4.2.4/dist/svgpanzoom.min.js"></script> #}
+    <script src="{{ url_for('static', filename='node_modules/svg-pan-zoom/dist/svg-pan-zoom.js')}}"></script>
+    {# comment  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/svgpanzoom@4.2.4/dist/svgpanzoom.min.css"/> #}
+</head>
+<body>
+	<header>
+		<nav>
+			<ul>
+				<li><a href="/">Validate</a></li>
+				<li><a href="/generate">Generate</a></li>
+                <li><a href="/about">About</a></li>
+				<li><a href="/contact">Contact</a></li>
+
+			</ul>
+		</nav>
+	</header>
+	
+	<main>
+		{% block content %}{% endblock %}
+	</main>
+</body>
+
+
+<script>
+    var yashe = YASHE.fromTextArea(document.getElementById('shex'), {
+        showDownloadButton: false,
+        showDeleteButton: false,
+    });
+    // shexForm.init(yashe);
+</script>
+
+<script>
+    const yasgui = new Yasgui(document.getElementById("sparql"));
+</script>
+
+<script>
+    var objectElement = document.getElementById('graph0');
+
+    objectElement.addEventListener('load', function() {
+        var svgElement = objectElement.contentDocument.documentElement;
+        var panZoomInstance = svgPanZoom(svgElement, {
+          zoomEnabled: true,
+          controlIconsEnabled: true,
+          fit: true,
+          center: true,
+          panEnabled: true,
+          mouseWheelZoomEnabled: true,
+          doubleClickZoomEnabled: true
+        });
+      
+        svgElement.style.width = '100%';
+        svgElement.style.height = '100%';
+      });
+</script>
+
+</html>

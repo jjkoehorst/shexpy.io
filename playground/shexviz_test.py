@@ -13,12 +13,17 @@ from pyjsg.jsglib import JSGArray
 from pyshex.utils.schema_loader import SchemaLoader
 
 # Set up logging for the application
-# logging.basicConfig(level=logging.DEBUG)
 logging.basicConfig(format='%(asctime)s - %(levelname)s - %(module)s:%(lineno)d - %(message)s', level=logging.DEBUG)
 
 # Placeholder for URL prefixes
-prefix_map = dict()
+prefix_map = {
+    # "http://www.w3.org/1999/02/22-rdf-syntax-ns#":"rdf",
+    # "http://www.w3.org/2001/XMLSchema#": "xsd",
+    # "http://www.w3.org/2000/01/rdf-schema#":"rdfs",
+    # "http://www.w3.org/ns/shex#" : "shex",
+}
 shex_code: str = ""
+
 # Create a new node and edge dict container
 node_dict = {}
 edge_dict = {}
@@ -71,14 +76,14 @@ def node_constraint(shape, identifier):
             else:
                 value = url_fix(value)
         values.add(value)
-        node_dict[identifier][predicate] = "" + "|".join(values) + ""
+        node_dict[identifier][predicate] = "|".join(values)
     elif "pattern" in shape["expression"]["valueExpr"]:
         node_dict[identifier][predicate] = shape["expression"]["valueExpr"]["pattern"]
 
 
 def get_values(values_expression):
     values = set()
-    for value in values_expression: # valueExpr["values"]:
+    for value in values_expression:  # valueExpr["values"]:
         # Not sure if we need to fix the url
         if type(value) == dict and 'value' in value:
             value = url_fix(value['value'])
@@ -88,6 +93,9 @@ def get_values(values_expression):
             value = url_fix(str(value))
         elif type(value) == ShExJSG.ShExJ.ObjectLiteral:
             value = value.value
+        elif type(value) == ShExJSG.ShExJ.NodeConstraint:
+            print("TODO... working on NodeConstraint")
+            value = ""
         else:
             logging.debug("Something else? " + str(type(value)))
             value = ""
@@ -102,10 +110,13 @@ def get_values(values_expression):
         values = new_values
     return values
 
+
 def triple_constraint(expression, identifier):
     global node_dict
     global edge_dict
     predicate = url_fix(expression.predicate)
+    if predicate == '':
+        predicate = '???'
     cardinality = "1"
     if "valueExpr" in expression:
         if expression.min:
@@ -122,18 +133,19 @@ def triple_constraint(expression, identifier):
                 # print(">>>", expression.valueExpr.values)
                 values = get_values(expression.valueExpr.values)
                 node_dict[identifier][predicate] = "[" + "|".join(values) + "] (" + cardinality + ")"
-                node_dict[identifier][predicate] = node_dict[identifier][predicate].replace("\n|","\n")
+                node_dict[identifier][predicate] = node_dict[identifier][predicate].replace("\n|", "\n")
             elif type(expression.valueExpr.datatype) == IRIREF:
-                node_dict[identifier][predicate] = url_fix(str(expression.valueExpr.datatype)) + " (" + cardinality + ")"
+                node_dict[identifier][predicate] = url_fix(
+                    str(expression.valueExpr.datatype)) + " (" + cardinality + ")"
             elif expression.valueExpr.pattern is not None:
                 node_dict[identifier][predicate] = str(expression.valueExpr.pattern) + " (" + cardinality + ")"
+
             else:
                 logging.error("NOT CAPTURED")
         elif type(expression.valueExpr) == IRIREF:
             left = identifier
             right = url_fix(expression['valueExpr'])
-            # print("left", left)
-            # print("right", right)
+
             if left + "###" + right not in edge_dict:
                 edge_dict[left + "#$#" + right] = []
 
@@ -167,14 +179,9 @@ def triple_constraint(expression, identifier):
             logging.error("TODO None")
             node_dict[identifier][predicate] = "(1)"
         else:
-            logging.error("Type not captured: "+ str(type(expression.valueExpr)))
+            logging.error("Type not captured: " + str(type(expression.valueExpr)))
     else:
         logging.error("Fix me...")
-    # elif "min" in expression:
-    #     node_dict[identifier][predicate] = str(expression["min"]) + ":" + str(expression["max"])
-    # else:
-    #     node_dict[identifier][predicate] = "<UNKNOWN>"
-
 
 def one_of_constraint(expression, identifier):
     logging.debug("one of constraints")
@@ -194,17 +201,22 @@ def expressions(expressions, identifier):
 
 
 def set_prefix_map(shex_code):
+    print("shex_code", shex_code)
     for line in shex_code.splitlines():
+        print(">>>", line)
         if line.lower().startswith("base"):
+            print(line)
             line = line.replace("BASE", "").replace("base", "")
             uri = line.strip()
             prefix_map[uri.replace("<", "").replace(">", "")] = "base"
         elif line.lower().startswith("prefix"):
+            print(line)
             line = line.replace("PREFIX", "").replace("prefix", "")
             prefix, uri = line.split(": ")
             prefix = prefix.strip()
             uri = uri.strip()
             prefix_map[uri.replace("<", "").replace(">", "")] = prefix
+    print(prefix_map)
 
 
 def each_of_constraint(each_of, identifier):
@@ -229,18 +241,21 @@ def main(shex=shex_code, path="./uml_diagram"):
     edge_dict = {}
 
     # Set the prefixes from shex
-    set_prefix_map(shex_code)
+    set_prefix_map(shex)
     # Create a schema loader
     loader = SchemaLoader()
     # Load schema as dictionary from json
     schema = loader.loads(shex)
-
+    print(schema)
+    # x = schema._as_dict
+    
+    # Turn it into a dictionary
     # json_schema = json.loads(loader.loads(shex)._as_json)
-    # Process shape
     # print(schema)
 
     # Create a new Graphviz object
     dot = Digraph()
+    dot.rankdir="TB"
     # Set the font for nodes and edges
     dot.attr('node', fontname='Courier New')
     dot.attr('edge', fontname='Courier New')
@@ -255,7 +270,6 @@ def main(shex=shex_code, path="./uml_diagram"):
         node_dict[identifier] = {}
 
         # For expressions
-        # print(shape.expression)
         if "expression" in shape and shape.expression is not None:
             if 'type' not in shape.expression:
                 logging.debug("No type defined")
@@ -266,43 +280,27 @@ def main(shex=shex_code, path="./uml_diagram"):
             elif shape.expression.type == "OneOf":
                 logging.debug("TODO process each of")
                 one_of_constraint(shape["expression"], identifier)
-            # elif "valueExpr" in shape["expression"]:
-            #     print("HERE!!!")
-            #     # NodeConstraint
-            #     if shape["expression"]["valueExpr"]["type"] == "NodeConstraint":
-            #         node_constraint(shape, identifier)
-            #     # Shape object
-            #     elif shape["expression"]["valueExpr"]["type"] == "Shape":
-            #         pass
-            #     else:
-            #         print("Something new!")
             else:
                 logging.debug("Some new expression type detected " + shape["expression"]["type"])
         elif type(shape.values) == JSGArray:
             values = get_values(shape.values)
             for predicate in values:
                 node_dict[identifier][predicate] = " (1)"
+        elif type(shape.shapeExprs) is JSGArray:
+            print("TODO... working on shape.shapeExprs")
         else:
-            logging.error("No expression found")
-            # For general expressions
-            # elif "expressions" in shape["expression"]:
-            #     for expression in shape["expression"]["expressions"]:
-            #         if type(expression) != dict:
-            #             print("Expression not a dict")
-            #         elif expression["type"] == "OneOf":
-            #             pass
-            #         else:
-            #             print("Some new expression type detected", expression)
+            logging.error("No expression found for " + shape.id)
 
     # Create the node
     for node in node_dict:
         content = "{" + escape_dot_string(node) + '|'
         for predicate in node_dict[node]:
-            content += "+" + escape_dot_string(predicate) + " : " + escape_dot_string(node_dict[node][predicate]) + "\\l"
+            content += "+" + escape_dot_string(predicate) + " : " + escape_dot_string(
+                node_dict[node][predicate]) + "\\l"
         content += '}'
         # Convert to raw string to get rid of crazy escapes
         content = r"%s" % content
-        content = content.replace("\n","\\n")
+        content = content.replace("\n", "\\n")
         dot.node(escape_dot_string(node), content)
         # print(">", node, content)
 
@@ -319,11 +317,13 @@ def main(shex=shex_code, path="./uml_diagram"):
         dot.render(path, format='svg')
     else:
         # Content xml cleanup only obtain the <svg></svg> part
+        dot.save("test" + ".dot")
         content = '\n'.join(dot.pipe(format='svg').decode('utf-8').split("\n")[6:])
+        content = content.replace("<svg width","<svg id=test-svg width")
         # Encode the SVG string using Base64
-        encoded_svg = base64.b64encode(content.encode('utf-8')).decode('ascii')
+        # encoded_svg = base64.b64encode(content.encode('utf-8')).decode('ascii')
         # Pass the encoded SVG string to the HTML template
-        return encoded_svg
+        return content
 
 
 if __name__ == '__main__':
@@ -331,7 +331,7 @@ if __name__ == '__main__':
     shutil.rmtree("../storage/generated/")
     os.makedirs("../storage/generated/")
     for filename in sorted(os.listdir("../static/shapes/test/")):
-        # if filename != "E39.shex": continue
+        if filename != "biolink-model.shex": continue
         logging.info("Processing " + filename)
         shex_code = open("../static/shapes/test/" + filename).read()
         shutil.copy("../static/shapes/test/" + filename, "../storage/generated/" + filename)
