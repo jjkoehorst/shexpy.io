@@ -139,7 +139,11 @@ def triple_constraint(expression, identifier):
                     str(expression.valueExpr.datatype)) + " (" + cardinality + ")"
             elif expression.valueExpr.pattern is not None:
                 node_dict[identifier][predicate] = str(expression.valueExpr.pattern) + " (" + cardinality + ")"
-
+            elif type(expression) == TripleConstraint:
+                if expression.valueExpr.nodeKind != None:
+                    node_dict[identifier][predicate] = str(expression.valueExpr.nodeKind) + " (" + cardinality + ")"
+                else:
+                    node_dict[identifier][predicate] = "???" + " (" + cardinality + ")"
             else:
                 logging.error("NOT CAPTURED")
         elif type(expression.valueExpr) == IRIREF:
@@ -201,22 +205,22 @@ def expressions(expressions, identifier):
 
 
 def set_prefix_map(shex_code):
-    print("shex_code", shex_code)
+    # print("shex_code", shex_code)
     for line in shex_code.splitlines():
-        print(">>>", line)
+        # print(">>>", line)
         if line.lower().startswith("base"):
-            print(line)
+            # print(line)
             line = line.replace("BASE", "").replace("base", "")
             uri = line.strip()
             prefix_map[uri.replace("<", "").replace(">", "")] = "base"
         elif line.lower().startswith("prefix"):
-            print(line)
+            # print(line)
             line = line.replace("PREFIX", "").replace("prefix", "")
             prefix, uri = line.split(": ")
             prefix = prefix.strip()
             uri = uri.strip()
             prefix_map[uri.replace("<", "").replace(">", "")] = prefix
-    print(prefix_map)
+    # print(prefix_map)
 
 
 def each_of_constraint(each_of, identifier):
@@ -246,7 +250,7 @@ def main(shex=shex_code, path="./uml_diagram"):
     loader = SchemaLoader()
     # Load schema as dictionary from json
     schema = loader.loads(shex)
-    print(schema)
+    # print(schema)
     # x = schema._as_dict
     
     # Turn it into a dictionary
@@ -264,6 +268,9 @@ def main(shex=shex_code, path="./uml_diagram"):
     dot.attr('edge', arrowtail='empty', dir='back')
 
     # Iterate over each shape which will become a UML object
+    if schema == None:
+        return "Incompatible Shape Expression"
+    
     for shape in schema.shapes:
         # check = json.loads(loader.loads(shex)._as_json)
         identifier = url_fix(shape.id)
